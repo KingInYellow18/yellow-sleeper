@@ -1,8 +1,8 @@
 ---
 
-## Version: 1.0 (Final) Date: May 11, 2026 Owner: Brad / Mifflin Doty Dynasty Companion to: PRD v0.4.4 (Polished Canonical Edition) Schema_version: "1.0" Status: Engineering-authoritative contracts for the eleven dynasty\_\* tools
+## Version: 1.0 (Final) Date: May 11, 2026 Owner: Brad / Yellow Sleeper Companion to: PRD v0.4.4 (Polished Canonical Edition) Schema_version: "1.0" Status: Engineering-authoritative contracts for the eleven dynasty\_\* tools
 
-# Mifflin Doty Dynasty MCP — Tool Contracts
+# Yellow Sleeper MCP — Tool Contracts
 
 This document is the engineering source of truth for tool input/output shapes. The PRD describes *what* each tool returns and why; this document specifies *exactly* the Pydantic models, field types, validators, and JSON examples engineering codes against and tests assert against.
 
@@ -79,7 +79,7 @@ Advisory flag raised by the server. Never blocks. Always returned in `policy_fla
 class PolicyFlag(BaseModel):
     type: FlagType = Field(..., description="Categorical flag type from the FlagType enum. LLM routes interpretation by this field.")
     asset: Optional\[str\] = Field(None, max_length=100, description="Player name, pick_token, or null if flag is non-asset-specific.")
-    rule_source: Literal\[".mifflin-doty.yaml", "tool_argument", "computed"\] = Field(..., description="Where the rule that produced this flag came from.")
+    rule_source: Literal\[".yellow-sleeper.yaml", "tool_argument", "computed"\] = Field(..., description="Where the rule that produced this flag came from.")
     severity: FlagSeverity = Field(..., description="'info' = neutral context; 'warning' = LLM should weigh carefully but not refuse.")
     reason: str = Field(..., max_length=500, description="Agent-readable explanation. Written as a fact, not a recommendation.")
 
@@ -95,7 +95,7 @@ class BlockingRule(BaseModel):
     asset: str = Field(..., max_length=100, description="The asset that triggered the block.")
     matched_against: str = Field(..., max_length=100, description="The entry from hard_untouchables that matched.")
     match_confidence: int = Field(..., ge=0, le=100, description="Fuzzy match score (0–100). Must be ≥ 88 for a block to fire.")
-    rule_source: Literal\[".mifflin-doty.yaml", "tool_argument"\] = Field(..., description="Where the hard_untouchables list came from.")
+    rule_source: Literal\[".yellow-sleeper.yaml", "tool_argument"\] = Field(..., description="Where the hard_untouchables list came from.")
 
 ```
 
@@ -199,7 +199,7 @@ class ResponseEnvelope(BaseModel):
     blocking_rules: List\[BlockingRule\] = Field(default_factory=list, description="Populated only when policy_status == BLOCKED. Empty otherwise.")
     policy_flags: List\[PolicyFlag\] = Field(default_factory=list, max_length=25)
     source_notes: List\[SourceNote\] = Field(default_factory=list, max_length=25)
-    config_sources: List\[str\] = Field(default_factory=list, description="Ordered list showing which config sources applied to this call, e.g. \['tool_argument', '.mifflin-doty.yaml'\].")
+    config_sources: List\[str\] = Field(default_factory=list, description="Ordered list showing which config sources applied to this call, e.g. \['tool_argument', '.yellow-sleeper.yaml'\].")
 
 ```
 
@@ -298,7 +298,7 @@ class HealthCheckOutput(ResponseEnvelope):
   "source_notes": \[
     {"field": "league_id", "source": "local_config", "timestamp": "2026-05-11T14:00:00Z", "cache_status": "fresh", "stale": false, "explanation": null}
   \],
-  "config_sources": \[".mifflin-doty.yaml", "env"\],
+  "config_sources": \[".yellow-sleeper.yaml", "env"\],
   "status_msgs": \["all caches within TTL"\],
   "cache_status": {
     "sleeper_players_nfl": "cached",
@@ -358,13 +358,13 @@ Input: none.
   "data_status": "COMPLETE",
   "blocking_rules": \[\],
   "policy_flags": \[
-    {"type": "protected_player", "asset": "Drake London", "rule_source": ".mifflin-doty.yaml", "severity": "info", "reason": "Drake London is on protected_players list."}
+    {"type": "protected_player", "asset": "Drake London", "rule_source": ".yellow-sleeper.yaml", "severity": "info", "reason": "Drake London is on protected_players list."}
   \],
   "source_notes": \[
     {"field": "grouped_roster", "source": "sleeper", "timestamp": "2026-05-11T14:00:00Z", "cache_status": "fresh", "stale": false, "explanation": null},
     {"field": "grouped_roster\[\].value", "source": "fantasycalc", "timestamp": "2026-05-11T11:30:00Z", "cache_status": "cached", "stale": false, "explanation": null}
   \],
-  "config_sources": \[".mifflin-doty.yaml"\],
+  "config_sources": \[".yellow-sleeper.yaml"\],
   "grouped_roster": \[
     {"position": "WR", "players": \[
       {"sleeper_id": "9745", "name": "Drake London", "position": "WR", "team": "ATL", "age": 24.6, "value": 8200, "rookie_status": false, "value_sources": \[{"source": "fantasycalc", "value": 8200, "timestamp": "2026-05-11T11:30:00Z", "enabled": true}\]}
@@ -541,13 +541,13 @@ class AnalyzeTradeOutput(ResponseEnvelope):
   "resolution_status": "OK",
   "data_status": "UNAVAILABLE",
   "blocking_rules": \[
-    {"rule": "hard_untouchable", "asset": "Drake London", "matched_against": "Drake London", "match_confidence": 100, "rule_source": ".mifflin-doty.yaml"}
+    {"rule": "hard_untouchable", "asset": "Drake London", "matched_against": "Drake London", "match_confidence": 100, "rule_source": ".yellow-sleeper.yaml"}
   \],
   "policy_flags": \[\],
   "source_notes": \[
     {"field": "asset_resolution", "source": "sleeper", "timestamp": "2026-05-11T14:00:00Z", "cache_status": "fresh", "stale": false, "explanation": null}
   \],
-  "config_sources": \[".mifflin-doty.yaml"\],
+  "config_sources": \[".yellow-sleeper.yaml"\],
   "asset_resolution": \[
     {"input": "Drake London", "asset_type": "player", "resolved_id": "9745", "match_confidence": 100, "candidates": \[\], "manual_review": false},
     {"input": "Bijan Robinson", "asset_type": "player", "resolved_id": "9491", "match_confidence": 100, "candidates": \[\], "manual_review": false}
@@ -568,12 +568,12 @@ class AnalyzeTradeOutput(ResponseEnvelope):
   "data_status": "COMPLETE",
   "blocking_rules": \[\],
   "policy_flags": \[
-    {"type": "protected_pick_pattern", "asset": "pick_2027_r1_orig11", "rule_source": ".mifflin-doty.yaml", "severity": "warning", "reason": "2027 1st matches protected_pick_patterns. LLM should weigh carefully."}
+    {"type": "protected_pick_pattern", "asset": "pick_2027_r1_orig11", "rule_source": ".yellow-sleeper.yaml", "severity": "warning", "reason": "2027 1st matches protected_pick_patterns. LLM should weigh carefully."}
   \],
   "source_notes": \[
     {"field": "value_math", "source": "fantasycalc", "timestamp": "2026-05-11T11:30:00Z", "cache_status": "cached", "stale": false, "explanation": null}
   \],
-  "config_sources": \[".mifflin-doty.yaml"\],
+  "config_sources": \[".yellow-sleeper.yaml"\],
   "asset_resolution": \[
     {"input": "my 2027 1st", "asset_type": "pick", "resolved_id": "pick_2027_r1_orig11", "match_confidence": 100, "candidates": \[\], "manual_review": false},
     {"input": "Jaylen Wright", "asset_type": "player", "resolved_id": "11620", "match_confidence": 100, "candidates": \[\], "manual_review": false}
@@ -608,7 +608,7 @@ class AnalyzeTradeOutput(ResponseEnvelope):
     {"type": "ambiguous_resolution", "asset": "my 2027 1st", "rule_source": "computed", "severity": "warning", "reason": "Description matches multiple owned picks. LLM should ask Brad which one."}
   \],
   "source_notes": \[\],
-  "config_sources": \[".mifflin-doty.yaml"\],
+  "config_sources": \[".yellow-sleeper.yaml"\],
   "asset_resolution": \[
     {
       "input": "my 2027 1st",

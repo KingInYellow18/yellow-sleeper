@@ -1,12 +1,12 @@
 ---
 Version: 1.0
 Date: May 11, 2026
-Owner: Brad / Mifflin Doty Dynasty
+Owner: Brad / Yellow Sleeper
 Companion to: PRD v0.4.4 (Canonical) and TOOL_CONTRACTS.md v1.0 (Final)
 Status: Engineering-authoritative implementation spec
 ---
 
-# Mifflin Doty Dynasty MCP — Technical Specification
+# Yellow Sleeper MCP — Technical Specification
 
 This document specifies *how* to build the server. The PRD specifies what to build and why; TOOL_CONTRACTS.md specifies the I/O shapes; this document specifies the modules, libraries, algorithms, concurrency model, testing approach, and distribution mechanism. Where decisions are contested or where best practice has evolved recently, sources are cited.
 
@@ -21,14 +21,14 @@ This document specifies *how* to build the server. The PRD specifies what to bui
 `src/` layout is the modern Python default for any package intended to be installed (which this is, via `uv tool install .`). Real Python's project-layout reference recommends it specifically for "packages intended to be installed, published, or reused" because it "separates source code from other components and prevents issues with" import resolution during local development. FastMCP itself uses the same layout — "The project follows a standard Python package layout with source code in src/fastmcp/ and tests in tests/."
 
 ```
-mifflin-doty-dynasty-mcp/
+yellow-sleeper/
 ├── pyproject.toml
 ├── README.md
-├── .mifflin-doty.yaml.example
+├── .yellow-sleeper.yaml.example
 ├── src/
-│   └── mifflin_doty_mcp/
+│   └── yellow_sleeper/
 │       ├── __init__.py
-│       ├── __main__.py              # python -m mifflin_doty_mcp entry point
+│       ├── __main__.py              # python -m yellow_sleeper entry point
 │       ├── server.py                # FastMCP instance, lifespan, tool registration
 │       ├── config.py                # YAML/env loader, hot-reload, Policy model
 │       ├── models/                  # All Pydantic models from TOOL_CONTRACTS.md
@@ -102,7 +102,7 @@ mifflin-doty-dynasty-mcp/
 
 ### Single FastMCP instance, single `lifespan`
 
-`src/mifflin_doty_mcp/server.py` is the only place that imports `FastMCP`:
+`src/yellow_sleeper/server.py` is the only place that imports `FastMCP`:
 
 ```python
 from contextlib import asynccontextmanager
@@ -121,7 +121,7 @@ async def lifespan(server: FastMCP):
     finally:
         await http_client.aclose()
 
-mcp = FastMCP("mifflin-doty-dynasty", lifespan=lifespan)
+mcp = FastMCP("yellow-sleeper", lifespan=lifespan)
 
 # Import each tool module to register its @mcp.tool() decorator
 from .tools import (
@@ -160,7 +160,7 @@ Four cache files, each with the TTL specified in the PRD:
 Every cache write goes through this function. No exceptions. The reason is concurrency: two tool calls may both detect a stale cache and both try to refresh; without atomic replacement, the second write can truncate the first and leave an unparseable file.
 
 ```python
-# src/mifflin_doty_mcp/store/cache.py
+# src/yellow_sleeper/store/cache.py
 import os
 import tempfile
 import gzip
@@ -202,7 +202,7 @@ async def atomic_write_json(path: Path, data: Any, *, gzipped: bool = False) -> 
 Each cache file has its own `asyncio.Lock`, held only across the read-modify-write cycle. Two reads can proceed in parallel; two writes against the same key serialize; writes against different keys remain parallel.
 
 ```python
-# src/mifflin_doty_mcp/store/cache.py
+# src/yellow_sleeper/store/cache.py
 from asyncio import Lock
 from collections import defaultdict
 
@@ -269,7 +269,7 @@ Considered. Rejected because (a) it adds a dep without solving a problem the fil
 The actual httpx default is 5 seconds, not infinite, but the principle stands — be explicit. The 2025 "httpx + asyncio patterns" reference uses this shape, which is what I recommend adopting verbatim:
 
 ```python
-# src/mifflin_doty_mcp/clients/http.py
+# src/yellow_sleeper/clients/http.py
 import httpx
 
 DEFAULT_TIMEOUT = httpx.Timeout(
@@ -287,7 +287,7 @@ def build_shared_client() -> httpx.AsyncClient:
             max_keepalive_connections=10,
             keepalive_expiry=30.0,
         ),
-        headers={"User-Agent": "mifflin-doty-dynasty-mcp/1.0 (personal use)"},
+        headers={"User-Agent": "yellow-sleeper/1.0 (personal use)"},
     )
 ```
 
@@ -296,7 +296,7 @@ def build_shared_client() -> httpx.AsyncClient:
 Confirmed across the official docs, the Go wrapper, the Laravel wrapper, the einreke MCP server, and the LangDB hosting page: "Per Sleeper's documentation, you should stay under 1000 API calls per minute to avoid being IP-blocked." This is far above any single-user usage pattern, but a global semaphore at 10 concurrent requests provides a cheap insurance policy against accidental burst loops (e.g., a buggy refresh path).
 
 ```python
-# src/mifflin_doty_mcp/clients/sleeper.py
+# src/yellow_sleeper/clients/sleeper.py
 from asyncio import Semaphore
 
 class SleeperClient:
@@ -333,7 +333,7 @@ The `league_snapshot.json` cache is a *single* file that holds the joined `{leag
 ### Active-draft detection for draft_state TTL
 
 ```python
-# src/mifflin_doty_mcp/clients/sleeper.py
+# src/yellow_sleeper/clients/sleeper.py
 def draft_state_ttl(draft: dict) -> int:
     """30s while drafting, 1h otherwise."""
     status = draft.get("status", "complete")
@@ -392,12 +392,12 @@ Two things to call out from that shape:
 
 1. **`sleeperId` is a top-level field** on every player record. This is the join key — no fuzzy matching is needed between FantasyCalc and Sleeper data. Important: it can be `None` for a small number of players (deep rookies, retired, recently signed) and the code path must handle that as `missing_value` rather than throwing.
 
-2. **No `tep` parameter exists** in the documented query string. The Mifflin Doty league is 0.5 TEP. This confirms the PRD's call to treat MVP values as "non-TEP approximations" and plan a Stage 2 spreadsheet overlay. There is no engineering workaround in MVP — document it in the source notes so the LLM knows.
+2. **No `tep` parameter exists** in the documented query string. The Yellow Sleeper league is 0.5 TEP. This confirms the PRD's call to treat MVP values as "non-TEP approximations" and plan a Stage 2 spreadsheet overlay. There is no engineering workaround in MVP — document it in the source notes so the LLM knows.
 
-### Query parameters for the Mifflin Doty league
+### Query parameters for the Yellow Sleeper league
 
 ```python
-# src/mifflin_doty_mcp/clients/fantasycalc.py
+# src/yellow_sleeper/clients/fantasycalc.py
 QUERY_PARAMS = {
     "isDynasty": "true",
     "numQbs": "2",      # Superflex
@@ -505,7 +505,7 @@ Confirmed cases from real dynasty trade conversations:
 ### Grammar
 
 ```python
-# src/mifflin_doty_mcp/resolve/picks.py
+# src/yellow_sleeper/resolve/picks.py
 import re
 
 ROUND_LEXICON = {
@@ -649,10 +649,10 @@ PRD says config hot-reloads. The two real options are `watchfiles` (background t
 
 ### Config sources and precedence
 
-Per PRD: `tool argument > .mifflin-doty.yaml > env > built-in default`.
+Per PRD: `tool argument > .yellow-sleeper.yaml > env > built-in default`.
 
 ```python
-# src/mifflin_doty_mcp/config.py
+# src/yellow_sleeper/config.py
 class StaticConfig(BaseModel):
     sleeper_league_id: str
     sleeper_username: str
@@ -686,13 +686,13 @@ class Config:
                     new_policy = self._load_yaml_policy()
                     self._policy = new_policy
                     self._policy_mtime = mtime
-                    sources.append(".mifflin-doty.yaml (reloaded)")
+                    sources.append(".yellow-sleeper.yaml (reloaded)")
                 except (yaml.YAMLError, ValidationError) as e:
                     # Validation failed: log, keep previous, do not raise
                     logger.warning("policy reload failed; keeping previous", extra={"error": str(e)})
-                    sources.append(".mifflin-doty.yaml (reload failed, using previous)")
+                    sources.append(".yellow-sleeper.yaml (reload failed, using previous)")
             else:
-                sources.append(".mifflin-doty.yaml")
+                sources.append(".yellow-sleeper.yaml")
 
         effective = self._policy
         if override:
@@ -704,7 +704,7 @@ class Config:
 
 ### YAML library
 
-Use `ruamel.yaml`, not PyYAML. Reason: Brad edits `.mifflin-doty.yaml` by hand; `ruamel.yaml` preserves comments and structure on reads. PyYAML strips them.
+Use `ruamel.yaml`, not PyYAML. Reason: Brad edits `.yellow-sleeper.yaml` by hand; `ruamel.yaml` preserves comments and structure on reads. PyYAML strips them.
 
 ### Validation
 
@@ -758,7 +758,7 @@ There is no CPU-bound work in this server. Fuzzy matching is microseconds. The w
 ### Decision: stdlib `logging` with JSON formatter, redaction filter, 7-day rotation, written to `.cache/logs/server.log`. No third-party logging library.
 
 ```python
-# src/mifflin_doty_mcp/obs/logging.py
+# src/yellow_sleeper/obs/logging.py
 import logging
 import logging.handlers
 import json
@@ -800,7 +800,7 @@ def configure_logging(cache_dir: Path) -> None:
     handler.setFormatter(JSONFormatter())
     handler.addFilter(RedactionFilter())
 
-    root = logging.getLogger("mifflin_doty_mcp")
+    root = logging.getLogger("yellow_sleeper")
     root.setLevel(logging.INFO)
     root.addHandler(handler)
     root.propagate = False  # don't bubble to stdio, which would corrupt MCP transport
@@ -920,15 +920,15 @@ async def test_smoke_3_blocked_trade_with_untouchable(mocked_clients, tmp_cache)
 
 ### Decision: `uv tool install .` from local checkout. No PyPI publish for MVP.
 
-The Mifflin Doty MCP is a single-user personal tool. Publishing to PyPI is unnecessary and adds version-management overhead. `uv tool install` from a local path is the supported flow.
+The Yellow Sleeper is a single-user personal tool. Publishing to PyPI is unnecessary and adds version-management overhead. `uv tool install` from a local path is the supported flow.
 
 ### `pyproject.toml` essentials
 
 ```toml
 [project]
-name = "mifflin-doty-dynasty-mcp"
+name = "yellow-sleeper"
 version = "0.1.0"
-description = "Local MCP server for the Mifflin Doty Dynasty Sleeper league."
+description = "Local MCP server for the Sleeper fantasy football league."
 requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.0",
@@ -939,21 +939,21 @@ dependencies = [
 ]
 
 [project.scripts]
-mifflin-doty-dynasty-mcp = "mifflin_doty_mcp.__main__:main"
+yellow-sleeper = "yellow_sleeper.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 ```
 
-Note: the script entry point lets the client config invoke `mifflin-doty-dynasty-mcp` directly rather than `uv run python -m`, which avoids the working-directory dependence.
+Note: the script entry point lets the client config invoke `yellow-sleeper` directly rather than `uv run python -m`, which avoids the working-directory dependence.
 
 ### Install flow
 
 ```bash
-cd ~/code/mifflin-doty-dynasty-mcp
+cd ~/code/yellow-sleeper
 uv tool install .
-mifflin-doty-dynasty-mcp --help  # smoke test
+yellow-sleeper --help  # smoke test
 ```
 
 ### Claude Desktop config
@@ -963,13 +963,13 @@ mifflin-doty-dynasty-mcp --help  # smoke test
 ```json
 {
   "mcpServers": {
-    "mifflin-doty-dynasty": {
-      "command": "mifflin-doty-dynasty-mcp",
+    "yellow-sleeper": {
+      "command": "yellow-sleeper",
       "env": {
         "SLEEPER_LEAGUE_ID": "...",
         "SLEEPER_USERNAME": "brad",
         "LEAGUE_FORMAT": "14-team SF PPR 0.5 TEP",
-        "CACHE_DIR": "/Users/brad/.mifflin-doty-cache"
+        "CACHE_DIR": "/Users/brad/.yellow-sleeper-cache"
       }
     }
   }
@@ -981,7 +981,7 @@ mifflin-doty-dynasty-mcp --help  # smoke test
 Per the official Anthropic docs, add via the Claude Code CLI:
 
 ```bash
-claude mcp add mifflin-doty-dynasty -- mifflin-doty-dynasty-mcp
+claude mcp add yellow-sleeper -- yellow-sleeper
 ```
 
 with env vars set in the shell environment.
@@ -991,22 +991,22 @@ with env vars set in the shell environment.
 Already captured in PRD v0.4.4:
 
 ```toml
-[mcp_servers.mifflin-doty-dynasty]
-command = "mifflin-doty-dynasty-mcp"
+[mcp_servers.yellow-sleeper]
+command = "yellow-sleeper"
 
-[mcp_servers.mifflin-doty-dynasty.env]
+[mcp_servers.yellow-sleeper.env]
 SLEEPER_LEAGUE_ID = "..."
 SLEEPER_USERNAME = "brad"
 LEAGUE_FORMAT = "14-team SF PPR 0.5 TEP"
-CACHE_DIR = "/Users/brad/.mifflin-doty-cache"
+CACHE_DIR = "/Users/brad/.yellow-sleeper-cache"
 ```
 
-### `.mifflin-doty.yaml` example
+### `.yellow-sleeper.yaml` example
 
-Stored alongside the project or at `~/.mifflin-doty.yaml`; path is configurable via `MIFFLIN_DOTY_CONFIG` env var:
+Stored alongside the project or at `~/.yellow-sleeper.yaml`; path is configurable via `YELLOW_SLEEPER_CONFIG` env var:
 
 ```yaml
-# Mifflin Doty Dynasty trade policy
+# Yellow Sleeper trade policy
 hard_untouchables:
   - Drake London
   - Harold Fannin
@@ -1023,7 +1023,7 @@ protected_pick_patterns:
 ### Upgrade flow
 
 ```bash
-cd ~/code/mifflin-doty-dynasty-mcp
+cd ~/code/yellow-sleeper
 git pull
 uv tool install --reinstall .
 ```

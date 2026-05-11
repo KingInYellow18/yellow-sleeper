@@ -1,4 +1,4 @@
-/goal Build the Mifflin Doty Dynasty MCP server MVP to the spec frozen in PRD.md, TOOL_CONTRACTS.md, and TECHNICAL_SPEC.md at the repository root. Do not stop until every smoke-test scenario in PRD §"Success Metrics" passes on a real Sleeper+FantasyCalc fixture set and `uv tool install .` succeeds locally.
+/goal Build the Yellow Sleeper MCP server MVP to the spec frozen in PRD.md, TOOL_CONTRACTS.md, and TECHNICAL_SPEC.md at the repository root. Do not stop until every smoke-test scenario in PRD §"Success Metrics" passes on a real Sleeper+FantasyCalc fixture set and `uv tool install .` succeeds locally.
 
 ## Source of truth — read these first, every loop
 
@@ -24,8 +24,8 @@ Empty repository. PRD.md, TOOL_CONTRACTS.md, TECHNICAL_SPEC.md exist at the root
 
 ## Target state
 
-A working Python 3.11+ MCP server at `src/mifflin_doty_mcp/` that:
-1. Installs cleanly via `uv tool install .` and exposes the `mifflin-doty-dynasty-mcp` command
+A working Python 3.11+ MCP server at `src/yellow_sleeper/` that:
+1. Installs cleanly via `uv tool install .` and exposes the `yellow-sleeper` command
 2. Implements all 11 `dynasty_*` tools per TOOL_CONTRACTS.md §2 with exact Pydantic shapes
 3. Enforces the three guardrails from PRD §"Guardrail Policy" (hard untouchable block, asset resolution, no write actions)
 4. Returns `schema_version`, `policy_status`, `resolution_status`, `data_status`, `source_notes[]`, and `policy_flags[]` on every tool response
@@ -47,7 +47,7 @@ A working Python 3.11+ MCP server at `src/mifflin_doty_mcp/` that:
 
 ## Allowed actions
 
-- Create and modify files under `src/`, `tests/`, and root config files (`pyproject.toml`, `README.md`, `.mifflin-doty.yaml.example`, `.gitignore`)
+- Create and modify files under `src/`, `tests/`, and root config files (`pyproject.toml`, `README.md`, `.yellow-sleeper.yaml.example`, `.gitignore`)
 - Add dependencies listed in TECHNICAL_SPEC §11 to `pyproject.toml`
 - Run `uv`, `python`, `pytest`, `ruff`, and shell commands needed for validation
 - Create test fixtures under `tests/fixtures/sleeper/` and `tests/fixtures/fantasycalc/` by hand-crafting representative JSON based on the response shapes in TECHNICAL_SPEC §3 and §4. Do NOT call live APIs to generate fixtures.
@@ -75,11 +75,11 @@ A working Python 3.11+ MCP server at `src/mifflin_doty_mcp/` that:
 ## Verifiable end state — the goal is complete when ALL of these hold
 
 1. `uv tool install .` succeeds from a clean checkout
-2. `mifflin-doty-dynasty-mcp --help` runs and exits 0
+2. `yellow-sleeper --help` runs and exits 0
 3. `python -m pytest tests/ -v` shows 100% pass on unit, integration, and smoke tiers
 4. `ruff check src/ tests/` returns no errors
 5. All six smoke-test scenarios from PRD §"Success Metrics" have a corresponding test in `tests/smoke/test_smoke_questions.py` and each passes
-6. Every Pydantic model from TOOL_CONTRACTS.md §1 and §2 exists in `src/mifflin_doty_mcp/models/` with the exact field names, types, and validators specified
+6. Every Pydantic model from TOOL_CONTRACTS.md §1 and §2 exists in `src/yellow_sleeper/models/` with the exact field names, types, and validators specified
 7. The three cross-cutting validators from TOOL_CONTRACTS.md §3 (blocking consistency, stale explanation, blocked trade shape) are implemented and tested
 8. STATUS.md final entry reads "MVP complete — all smoke tests passing, ready for human review"
 

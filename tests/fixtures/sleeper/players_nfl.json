@@ -1,0 +1,12 @@
+{
+  "9745": {"player_id": "9745", "full_name": "Drake London", "first_name": "Drake", "last_name": "London", "position": "WR", "team": "ATL", "age": 24.6, "fantasy_positions": ["WR"], "years_exp": 4},
+  "9491": {"player_id": "9491", "full_name": "Bijan Robinson", "first_name": "Bijan", "last_name": "Robinson", "position": "RB", "team": "ATL", "age": 24.2, "fantasy_positions": ["RB"], "years_exp": 3},
+  "11620": {"player_id": "11620", "full_name": "Jaylen Wright", "first_name": "Jaylen", "last_name": "Wright", "position": "RB", "team": "MIA", "age": 23.1, "fantasy_positions": ["RB"], "years_exp": 2},
+  "6786": {"player_id": "6786", "full_name": "Jayden Daniels", "first_name": "Jayden", "last_name": "Daniels", "position": "QB", "team": "WAS", "age": 25.0, "fantasy_positions": ["QB"], "years_exp": 2},
+  "12345": {"player_id": "12345", "full_name": "Jaxon Smith-Njigba", "first_name": "Jaxon", "last_name": "Smith-Njigba", "position": "WR", "team": "SEA", "age": 24.4, "fantasy_positions": ["WR"], "years_exp": 3},
+  "9991": {"player_id": "9991", "full_name": "Harold Fannin", "first_name": "Harold", "last_name": "Fannin", "position": "TE", "team": "CLE", "age": 21.7, "fantasy_positions": ["TE"], "years_exp": 0},
+  "11500": {"player_id": "11500", "full_name": "Ashton Jeanty", "first_name": "Ashton", "last_name": "Jeanty", "position": "RB", "team": "LV", "age": 22.0, "fantasy_positions": ["RB"], "years_exp": 0},
+  "11501": {"player_id": "11501", "full_name": "Tetairoa McMillan", "first_name": "Tetairoa", "last_name": "McMillan", "position": "WR", "team": "CAR", "age": 22.1, "fantasy_positions": ["WR"], "years_exp": 0},
+  "11502": {"player_id": "11502", "full_name": "Cam Ward", "first_name": "Cam", "last_name": "Ward", "position": "QB", "team": "TEN", "age": 23.0, "fantasy_positions": ["QB"], "years_exp": 0},
+  "5000": {"player_id": "5000", "full_name": "Mike Evans", "first_name": "Mike", "last_name": "Evans", "position": "WR", "team": "TB", "age": 32.0, "fantasy_positions": ["WR"], "years_exp": 12}
+}

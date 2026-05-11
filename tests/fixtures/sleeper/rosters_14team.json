@@ -1,0 +1,16 @@
+[
+  {"roster_id": 1, "owner_id": "u1", "players": ["5001", "5002"]},
+  {"roster_id": 2, "owner_id": "u2", "players": ["5003", "5004"]},
+  {"roster_id": 3, "owner_id": "u3", "players": ["9491", "5005"]},
+  {"roster_id": 4, "owner_id": "u4", "players": ["5000", "5006"]},
+  {"roster_id": 5, "owner_id": "u5", "players": ["5007", "5008"]},
+  {"roster_id": 6, "owner_id": "u6", "players": ["5009", "5010"]},
+  {"roster_id": 7, "owner_id": "u7", "players": ["5011", "5012"]},
+  {"roster_id": 8, "owner_id": "u8", "players": ["5013", "5014"]},
+  {"roster_id": 9, "owner_id": "u9", "players": ["5015", "5016"]},
+  {"roster_id": 10, "owner_id": "u10", "players": ["5017", "5018"]},
+  {"roster_id": 11, "owner_id": "u11", "players": ["9745", "6786", "12345", "9991"]},
+  {"roster_id": 12, "owner_id": "u12", "players": ["11620", "5019"]},
+  {"roster_id": 13, "owner_id": "u13", "players": ["5020", "5021"]},
+  {"roster_id": 14, "owner_id": "u14", "players": ["5022", "5023"]}
+]

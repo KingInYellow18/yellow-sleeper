@@ -1,0 +1,10 @@
+{
+  "league_id": "1234567890",
+  "name": "Yellow Sleeper",
+  "season": "2026",
+  "total_rosters": 14,
+  "settings": {
+    "playoff_teams": 6
+  },
+  "roster_positions": ["QB", "RB", "RB", "WR", "WR", "WR", "TE", "FLEX", "SUPER_FLEX", "BN"]
+}
