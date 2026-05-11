@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
+from ..store.paths import CacheKey
 from .envelope import ResponseEnvelope
 from .health import CacheState
-
-CacheKey = Literal["sleeper_players_nfl", "fantasycalc_values", "league_snapshot", "draft_state"]
 
 
 class RefreshCacheInput(BaseModel):

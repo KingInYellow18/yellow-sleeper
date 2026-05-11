@@ -11,7 +11,11 @@ def test_resolve_roster_uses_narrow_margin_rule(sleeper_snapshot: dict) -> None:
 
 
 def test_resolve_roster_returns_single_confident_match(sleeper_snapshot: dict) -> None:
-    result = resolve_roster("Yellow Sleeper", sleeper_snapshot["rosters"], sleeper_snapshot["users"])
+    result = resolve_roster(
+        "Yellow Sleeper",
+        sleeper_snapshot["rosters"],
+        sleeper_snapshot["users"],
+    )
 
     assert result.matched is not None
     assert result.matched.roster_id == 11

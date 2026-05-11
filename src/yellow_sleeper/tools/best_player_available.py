@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal
 
 from ..analyze.pipelines import best_player_available_output
-from ..runtime import get_runtime
+from ..runtime import format_cache_error, get_runtime
 from ..server import mcp
 
 
@@ -17,14 +17,16 @@ async def dynasty_best_player_available(
     """Return rookie-eligible available players with factual inclusion reasons."""
     runtime = await get_runtime()
     players, _ = await runtime.players()
-    values, _ = await runtime.values()
+    values_result = await runtime.values_result()
     draft_state, _ = await runtime.draft_state(draft_id)
     output = best_player_available_output(
         players=players,
-        values=values,
+        values=values_result.data,
         draft_state=draft_state,
         position=position,
         limit=limit,
         board_source=rookie_board_source,
+        values_cache_status=values_result.status,
+        values_cache_error=format_cache_error(values_result.error),
     )
     return output.model_dump(mode="json")

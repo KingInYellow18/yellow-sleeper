@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tests.conftest import load_fixture
 from yellow_sleeper.analyze.pipelines import (
     analyze_trade_pipeline,
     best_player_available_output,
@@ -10,7 +11,6 @@ from yellow_sleeper.analyze.pipelines import (
 )
 from yellow_sleeper.config import DynamicPolicy
 from yellow_sleeper.models import DataStatus, PolicyStatus, ResolutionStatus
-from tests.conftest import load_fixture
 
 
 def test_smoke_1_health_check_standard_envelope() -> None:

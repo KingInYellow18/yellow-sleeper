@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from yellow_sleeper.clients import SleeperClient, build_shared_client, draft_state_ttl
 from tests.conftest import load_fixture
+from yellow_sleeper.clients import SleeperClient, build_shared_client, draft_state_ttl
 
 
 @pytest.mark.asyncio

@@ -59,10 +59,17 @@ from .value import (
     pick_value_source,
     player_value_source,
     source_disagreement,
+    value_source,
     values_by_sleeper_id,
 )
 
 POSITIONS = ("QB", "RB", "WR", "TE")
+
+# Cache-status sentinels — mirror SourceNote.cache_status Literal in models/shared.py.
+# Use these constants at comparison sites so a typo fails at import rather than silently.
+CACHE_STATUS_FRESH = "fresh"
+CACHE_STATUS_CACHED = "cached"
+CACHE_STATUS_STALE = "stale"
 
 
 def health_check_output(
@@ -75,8 +82,11 @@ def health_check_output(
     live_probe_results: list[Any] | None = None,
 ) -> HealthCheckOutput:
     errors = errors or []
-    all_unavailable = all(status in {"stale", "missing"} for status in cache_status.values())
-    any_partial = any(status in {"stale", "missing"} for status in cache_status.values()) or errors
+    degraded_states = {CACHE_STATUS_STALE, "missing"}
+    all_unavailable = all(status in degraded_states for status in cache_status.values())
+    any_partial = (
+        any(status in degraded_states for status in cache_status.values()) or errors
+    )
     if all_unavailable:
         data_status = DataStatus.UNAVAILABLE
     elif any_partial:
@@ -92,7 +102,7 @@ def health_check_output(
             reason=f"{key} cache status is {status}.",
         )
         for key, status in cache_status.items()
-        if status in {"stale", "missing"}
+        if status in degraded_states
     ]
     return HealthCheckOutput(
         policy_status=PolicyStatus.OK,
@@ -118,6 +128,8 @@ def get_my_roster_output(
     sleeper_username: str,
     policy: DynamicPolicy,
     config_sources: list[str],
+    values_cache_status: str = "cached",
+    values_cache_error: str | None = None,
 ) -> GetMyRosterOutput:
     roster_id = find_roster_id_for_username(snapshot, sleeper_username)
     roster = _roster_by_id(snapshot, roster_id)
@@ -136,7 +148,11 @@ def get_my_roster_output(
         for position in POSITIONS
     ]
     flags = _protected_player_flags(roster_players, policy, ".yellow-sleeper.yaml")
-    data_status = DataStatus.PARTIAL if missing_values else DataStatus.COMPLETE
+    flags.extend(_value_cache_flags(values_cache_status, values_cache_error))
+    data_status = _with_stale_data_status(
+        DataStatus.PARTIAL if missing_values else DataStatus.COMPLETE,
+        values_cache_status,
+    )
     return GetMyRosterOutput(
         policy_status=PolicyStatus.OK,
         resolution_status=ResolutionStatus.OK,
@@ -144,7 +160,12 @@ def get_my_roster_output(
         policy_flags=flags,
         source_notes=[
             _source_note("grouped_roster", "sleeper"),
-            _source_note("grouped_roster[].value", "fantasycalc", cache_status="cached"),
+            _source_note(
+                "grouped_roster[].value",
+                "fantasycalc",
+                cache_status=values_cache_status,
+                explanation=values_cache_error,
+            ),
         ],
         config_sources=config_sources,
         grouped_roster=grouped,
@@ -227,28 +248,55 @@ def get_player_value_output(
     player: str,
     players: Mapping[str, Any],
     values: Iterable[FCRecord | Mapping[str, Any]],
+    valuation_source: str = "auto",
+    values_cache_status: str = "cached",
+    values_cache_error: str | None = None,
 ) -> GetPlayerValueOutput:
     resolution = resolve_player(player, players)
-    value_index = values_by_sleeper_id(values)
+    fantasycalc_enabled = valuation_source != "xlsx"
+    value_index = values_by_sleeper_id(values) if fantasycalc_enabled else {}
     flags: list[PolicyFlag] = []
     candidates = resolution.candidates if resolution.manual_review else []
     value = None
     sources = []
     missing = []
     if resolution.resolved_id:
-        source = player_value_source(resolution.resolved_id, value_index)
+        if fantasycalc_enabled:
+            source = player_value_source(resolution.resolved_id, value_index)
+            missing_source = "fantasycalc"
+        else:
+            source = value_source("xlsx", None, enabled=False)
+            missing_source = "xlsx"
         sources = [source]
         value = source.value
         if value is None:
-            missing.append("fantasycalc")
+            missing.append(missing_source)
             flags.append(_missing_value_flag(player))
-    data_status = _value_data_status(bool(resolution.resolved_id), bool(value))
+    if fantasycalc_enabled:
+        flags.extend(_value_cache_flags(values_cache_status, values_cache_error))
+    cache_status = values_cache_status if fantasycalc_enabled else CACHE_STATUS_FRESH
+    source_note_explanation = (
+        values_cache_error
+        if fantasycalc_enabled
+        else "XLSX valuation source is not implemented in MVP."
+    )
+    data_status = _with_stale_data_status(
+        _value_data_status(bool(resolution.resolved_id), value is not None),
+        cache_status,
+    )
     return GetPlayerValueOutput(
         policy_status=PolicyStatus.OK,
         resolution_status=_resolution_status([resolution]),
         data_status=data_status,
         policy_flags=flags,
-        source_notes=[_source_note("value", "fantasycalc", cache_status="cached")],
+        source_notes=[
+            _source_note(
+                "value",
+                "fantasycalc" if fantasycalc_enabled else "xlsx",
+                cache_status=cache_status,
+                explanation=source_note_explanation,
+            )
+        ],
         sleeper_id=resolution.resolved_id,
         name=_resolved_player_name(resolution.resolved_id, players),
         value=value,
@@ -268,6 +316,8 @@ def analyze_trade_pipeline(
     values: Iterable[FCRecord | Mapping[str, Any]],
     sleeper_username: str = "brad",
     config_sources: list[str] | None = None,
+    values_cache_status: str = "cached",
+    values_cache_error: str | None = None,
 ) -> AnalyzeTradeOutput:
     value_records = parse_value_records(values)
     value_index = values_by_sleeper_id(value_records)
@@ -325,7 +375,9 @@ def analyze_trade_pipeline(
         value_index,
     )
     flags.extend(_missing_value_flags(missing_assets))
+    flags.extend(_value_cache_flags(values_cache_status, values_cache_error))
     data_status = _trade_data_status(value_math, missing_assets)
+    data_status = _with_stale_data_status(data_status, values_cache_status)
     roster_context = _roster_context(
         snapshot,
         players,
@@ -341,7 +393,12 @@ def analyze_trade_pipeline(
         policy_flags=flags,
         source_notes=[
             _source_note("asset_resolution", "sleeper"),
-            _source_note("value_math", "fantasycalc", cache_status="cached"),
+            _source_note(
+                "value_math",
+                "fantasycalc",
+                cache_status=values_cache_status,
+                explanation=values_cache_error,
+            ),
             _source_note(
                 "roster_context.age_stats",
                 "computed",
@@ -361,6 +418,8 @@ def league_power_map_output(
     players: Mapping[str, Any],
     values: Iterable[FCRecord | Mapping[str, Any]],
     include_pick_value: bool = False,
+    values_cache_status: str = "cached",
+    values_cache_error: str | None = None,
 ) -> LeaguePowerMapOutput:
     value_index = values_by_sleeper_id(values)
     names = _user_by_owner(snapshot)
@@ -401,8 +460,20 @@ def league_power_map_output(
     return LeaguePowerMapOutput(
         policy_status=PolicyStatus.OK,
         resolution_status=ResolutionStatus.OK,
-        data_status=DataStatus.PARTIAL if missing_any else DataStatus.COMPLETE,
-        source_notes=[_source_note("teams", "sleeper")],
+        data_status=_with_stale_data_status(
+            DataStatus.PARTIAL if missing_any else DataStatus.COMPLETE,
+            values_cache_status,
+        ),
+        policy_flags=_value_cache_flags(values_cache_status, values_cache_error),
+        source_notes=[
+            _source_note("teams", "sleeper"),
+            _source_note(
+                "teams[].roster_total",
+                "fantasycalc",
+                cache_status=values_cache_status,
+                explanation=values_cache_error,
+            ),
+        ],
         teams=teams,
     )
 
@@ -412,6 +483,7 @@ def whats_on_the_clock_output(
     draft_state: dict[str, Any],
     snapshot: dict[str, Any],
     players: Mapping[str, Any],
+    pool: str = "rookies_only",
 ) -> WhatsOnTheClockOutput:
     draft = draft_state.get("draft", {})
     picks = draft_state.get("picks", [])
@@ -430,11 +502,24 @@ def whats_on_the_clock_output(
             on_the_clock_owner=owner["owner_name"],
             on_the_clock_team=owner["team_name"],
         )
+    pool_not_implemented = pool == "all"
+    source_notes = [_source_note("draft_status", "sleeper")]
+    if pool_not_implemented:
+        source_notes.append(
+            _source_note(
+                "recent_picks",
+                "sleeper",
+                explanation=(
+                    "pool='all' is not yet implemented; returning rookies_only view. "
+                    "Set pool='rookies_only' to suppress this notice."
+                ),
+            )
+        )
     return WhatsOnTheClockOutput(
         policy_status=PolicyStatus.OK,
         resolution_status=ResolutionStatus.OK,
-        data_status=DataStatus.COMPLETE,
-        source_notes=[_source_note("draft_status", "sleeper")],
+        data_status=DataStatus.PARTIAL if pool_not_implemented else DataStatus.COMPLETE,
+        source_notes=source_notes,
         draft_status=status,
         pick_context=pick_context,
         recent_picks=recent,
@@ -449,6 +534,8 @@ def best_player_available_output(
     position: str | None = None,
     limit: int = 10,
     board_source: str = "fantasycalc",
+    values_cache_status: str = "cached",
+    values_cache_error: str | None = None,
 ) -> BestPlayerAvailableOutput:
     drafted = {str(pick.get("player_id")) for pick in draft_state.get("picks", [])}
     value_index = values_by_sleeper_id(values)
@@ -489,8 +576,16 @@ def best_player_available_output(
     return BestPlayerAvailableOutput(
         policy_status=PolicyStatus.OK,
         resolution_status=ResolutionStatus.OK,
-        data_status=DataStatus.COMPLETE,
-        source_notes=[_source_note("candidates", "fantasycalc", cache_status="cached")],
+        data_status=_with_stale_data_status(DataStatus.COMPLETE, values_cache_status),
+        policy_flags=_value_cache_flags(values_cache_status, values_cache_error),
+        source_notes=[
+            _source_note(
+                "candidates",
+                "fantasycalc",
+                cache_status=values_cache_status,
+                explanation=values_cache_error,
+            )
+        ],
         candidates=candidates[:limit],
         excluded_count=excluded,
         board_source=board_source,  # type: ignore[arg-type]
@@ -524,9 +619,38 @@ def refresh_cache_output(
 
 
 def _health_msg(cache_status: dict[str, str]) -> str:
-    if all(status in {"fresh", "cached"} for status in cache_status.values()):
+    if all(
+        status in {CACHE_STATUS_FRESH, CACHE_STATUS_CACHED} for status in cache_status.values()
+    ):
         return "all caches within TTL"
     return "one or more caches are stale or missing"
+
+
+def _with_stale_data_status(data_status: DataStatus, cache_status: str) -> DataStatus:
+    if cache_status == CACHE_STATUS_STALE and data_status == DataStatus.COMPLETE:
+        return DataStatus.PARTIAL
+    return data_status
+
+
+def _value_cache_flags(cache_status: str, error: str | None = None) -> list[PolicyFlag]:
+    if cache_status != CACHE_STATUS_STALE:
+        return []
+    reason = "FantasyCalc values were served from stale cache after refresh failed."
+    if error:
+        reason = _truncate(f"{reason} {error}")
+    return [
+        PolicyFlag(
+            type=FlagType.STALE_DATA,
+            asset="fantasycalc_values",
+            rule_source="computed",
+            severity=FlagSeverity.WARNING,
+            reason=reason,
+        )
+    ]
+
+
+def _truncate(value: str, limit: int = 500) -> str:
+    return value[:limit]
 
 
 def _source_note(
@@ -536,16 +660,17 @@ def _source_note(
     cache_status: str = "fresh",
     explanation: str | None = None,
 ) -> SourceNote:
-    stale = cache_status == "stale"
+    stale = cache_status == CACHE_STATUS_STALE
+    note_explanation = (
+        explanation if explanation or not stale else "stale cache served after refresh failed"
+    )
     return SourceNote(
         field=field,
         source=source,  # type: ignore[arg-type]
         timestamp=datetime.now(UTC),
         cache_status=cache_status,  # type: ignore[arg-type]
         stale=stale,
-        explanation=(
-            explanation if explanation or not stale else "stale cache served after refresh failed"
-        ),
+        explanation=_truncate(note_explanation) if note_explanation else None,
     )
 
 

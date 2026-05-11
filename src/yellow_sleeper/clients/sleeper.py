@@ -89,7 +89,22 @@ class SleeperClient:
 
         if cache is None:
             return await fetch()
-        return (await cache.read_or_fetch("draft_state", fetch, force=force)).data
+
+        # Drop TTL from 1h to 30s once cached state shows the draft is active so
+        # tools polling whats_on_the_clock see new picks within the round.
+        ttl_seconds: int | None = None
+        try:
+            cached = cache.read("draft_state")
+        except (FileNotFoundError, OSError):
+            cached = None
+        if isinstance(cached, dict):
+            ttl_seconds = draft_state_ttl(cached.get("draft", {}))
+
+        return (
+            await cache.read_or_fetch(
+                "draft_state", fetch, ttl_seconds=ttl_seconds, force=force
+            )
+        ).data
 
     async def probe(self) -> LiveProbeResult:
         start = time.monotonic()
@@ -113,7 +128,7 @@ class SleeperClient:
     async def _get_with_retry(self, path: str) -> Any:
         try:
             return await self._get(path)
-        except (httpx.HTTPStatusError, httpx.NetworkError) as exc:
+        except (httpx.HTTPStatusError, httpx.NetworkError, httpx.TimeoutException) as exc:
             if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
                 raise
             await asyncio.sleep(0.5)

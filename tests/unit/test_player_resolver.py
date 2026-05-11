@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from yellow_sleeper.resolve import resolve_player
 from tests.conftest import load_fixture
+from yellow_sleeper.resolve import resolve_player
 
 
 def test_resolve_player_by_exact_name() -> None:

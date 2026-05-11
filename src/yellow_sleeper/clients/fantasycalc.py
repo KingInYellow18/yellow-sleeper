@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import logging
 import time
 from datetime import UTC, datetime
 
 import httpx
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
 from ..models import LiveProbeResult
 from ..store import Cache
-
-logger = logging.getLogger("yellow_sleeper.clients.fantasycalc")
 
 QUERY_PARAMS = {
     "isDynasty": "true",
@@ -49,24 +46,10 @@ class FantasyCalcClient:
         response = await self._http.get(f"{self.BASE_URL}/values/current", params=QUERY_PARAMS)
         response.raise_for_status()
         raw = response.json()
-        records: list[FCRecord] = []
-        skipped = 0
-        for record in raw:
-            try:
-                records.append(FCRecord.model_validate(record))
-            except ValidationError as exc:
-                skipped += 1
-                logger.warning(
-                    "fantasycalc: skipping malformed record: %s",
-                    str(exc)[:200],
-                )
-        if skipped:
-            logger.warning(
-                "fantasycalc: skipped %d/%d malformed records",
-                skipped,
-                len(raw),
-            )
-        return records
+        # ValidationError on any record propagates intentionally so Cache.read_or_fetch
+        # serves stale on bad upstream payloads — covered by
+        # test_fantasycalc_malformed_response_falls_back_to_stale_cache.
+        return [FCRecord.model_validate(record) for record in raw]
 
     async def get_current_values_cached(self, cache: Cache, *, force: bool = False):
         async def fetch() -> list[dict]:

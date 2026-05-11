@@ -10,7 +10,7 @@ import httpx
 from .clients import FantasyCalcClient, SleeperClient, build_shared_client
 from .config import Config, load_config
 from .obs.logging import configure_logging
-from .store import Cache
+from .store import Cache, CacheReadResult
 
 logger = logging.getLogger("yellow_sleeper.runtime")
 
@@ -31,8 +31,11 @@ class Runtime:
         return result.data, result.status
 
     async def values(self, *, force: bool = False) -> tuple[list[dict[str, Any]], str]:
-        result = await self.fantasycalc.get_current_values_cached(self.cache, force=force)
+        result = await self.values_result(force=force)
         return result.data, result.status
+
+    async def values_result(self, *, force: bool = False) -> CacheReadResult:
+        return await self.fantasycalc.get_current_values_cached(self.cache, force=force)
 
     async def snapshot(self, *, force: bool = False) -> tuple[dict[str, Any], str]:
         async def fetch() -> dict[str, Any]:
@@ -72,11 +75,14 @@ class Runtime:
             try:
                 await refresher(force=force)
                 refreshed.append(key)
-            except (httpx.HTTPError, OSError, ValueError) as exc:
+            except Exception as exc:
+                # Broad catch: TaskGroup raises ExceptionGroup (not in httpx.HTTPError),
+                # asyncio.TimeoutError is independent of httpx, and pydantic ValidationError
+                # surfaces from cache stale-fallback paths.
                 logger.error(
                     "refresh_all: %r failed: %s", key, exc, exc_info=True
                 )
-                failures[key] = str(exc)[:500]
+                failures[key] = format_cache_error(exc) or str(exc)[:500]
         post = self.cache.statuses()
         return prior, post, refreshed, failures
 
@@ -112,6 +118,12 @@ async def get_runtime() -> Runtime:
         if _runtime is None:
             _runtime = create_runtime()
         return _runtime
+
+
+def format_cache_error(error: BaseException | None) -> str | None:
+    if error is None:
+        return None
+    return f"{type(error).__name__}: {error}"[:500]
 
 
 def _current_draft_id(snapshot: dict[str, Any]) -> str:
