@@ -29,6 +29,7 @@ from ..models import (
     LeaguePowerMapOutput,
     ListMyPicksOutput,
     ListTradedPicksOutput,
+    PerAssetValue,
     Pick,
     PickContext,
     PickInventorySummary,
@@ -882,12 +883,12 @@ def _trade_value_math(
             value_source = _asset_value_source(resolution, inventory, value_index)
             value = value_source.value
             per_asset.append(
-                {
-                    "asset": resolution.resolved_id,
-                    "side": side,
-                    "value": value,
-                    "sources": [value_source],
-                }
+                PerAssetValue(
+                    asset=resolution.resolved_id,
+                    side=side,
+                    value=value,
+                    sources=[value_source],
+                )
             )
             if value is None:
                 missing_assets.append(resolution.input)
