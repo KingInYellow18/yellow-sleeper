@@ -1,0 +1,16 @@
+[
+  {"user_id": "u1", "display_name": "Alice Cooper", "username": "alice", "metadata": {"team_name": "Scranton Stranglers"}},
+  {"user_id": "u2", "display_name": "Bob Vance", "username": "bobv", "metadata": {"team_name": "Vance Refrigeration"}},
+  {"user_id": "u3", "display_name": "Mike Johnson", "username": "bigmike", "metadata": {"team_name": "Johnson Paper"}},
+  {"user_id": "u4", "display_name": "Mike Smith", "username": "mikes", "metadata": {"team_name": "Smith Machine"}},
+  {"user_id": "u5", "display_name": "Pam Beesly", "username": "pam", "metadata": {"team_name": "Pratt Stars"}},
+  {"user_id": "u6", "display_name": "Jim Halpert", "username": "jim", "metadata": {"team_name": "Tuna Squad"}},
+  {"user_id": "u7", "display_name": "Evan Walters", "username": "wagon", "metadata": {"team_name": "Big Mike's Wagon"}},
+  {"user_id": "u8", "display_name": "Oscar Martinez", "username": "oscar", "metadata": {"team_name": "Accountants"}},
+  {"user_id": "u9", "display_name": "Angela Martin", "username": "angela", "metadata": {"team_name": "Party Planning"}},
+  {"user_id": "u10", "display_name": "Dwight Schrute", "username": "dwight", "metadata": {"team_name": "Beet Farmers"}},
+  {"user_id": "u11", "display_name": "Brad Schwarzkopf", "username": "brad", "metadata": {"team_name": "Yellow Sleeper"}},
+  {"user_id": "u12", "display_name": "Ryan Howard", "username": "ryan", "metadata": {"team_name": "WUPHF"}},
+  {"user_id": "u13", "display_name": "Kelly Kapoor", "username": "kelly", "metadata": {"team_name": "Kapoors"}},
+  {"user_id": "u14", "display_name": "Stanley Hudson", "username": "stanley", "metadata": {"team_name": "Pretzel Day"}}
+]

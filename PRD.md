@@ -1,11 +1,11 @@
 
 ---
 
-Version: 0.4.4 (Polished Canonical Edition) Date: May 11, 2026 Owner: Brad / Mifflin Doty Dynasty Canonical status: Product requirements source of truth Target clients: Claude Code and Codex MVP architecture: Single local stdio MCP server with LLM-first context output and minimal guardrails Transport: stdio (subprocess, stdin/stdout) Schema_version: "1.0"
+Version: 0.4.4 (Polished Canonical Edition) Date: May 11, 2026 Owner: Brad / Yellow Sleeper Canonical status: Product requirements source of truth Target clients: Claude Code and Codex MVP architecture: Single local stdio MCP server with LLM-first context output and minimal guardrails Transport: stdio (subprocess, stdin/stdout) Schema_version: "1.0"
 
 ---
 
-# Mifflin Doty Dynasty MCP Server PRD v0.4.4
+# Yellow Sleeper MCP Server PRD v0.4.4
 
 ### TL;DR
 
@@ -210,12 +210,12 @@ Input: force? (bool, default false) Output:
 * Codex CLI config example:
 
 ```
-\[mcp_servers.mifflin-doty-dynasty\]
+\[mcp_servers.yellow-sleeper\]
 command = "uv"
-args = \["run", "python", "-m", "mifflin_doty_mcp"\]
-cwd = "/path/to/mifflin-doty-dynasty-mcp"
+args = \["run", "python", "-m", "yellow_sleeper"\]
+cwd = "/path/to/yellow-sleeper"
 
-\[mcp_servers.mifflin-doty-dynasty.env\]
+\[mcp_servers.yellow-sleeper.env\]
 SLEEPER_LEAGUE_ID = "..."
 SLEEPER_USERNAME = "..."
 LEAGUE_FORMAT = "14-team SF PPR 0.5 TEP"

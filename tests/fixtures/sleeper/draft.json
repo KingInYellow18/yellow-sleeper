@@ -1,0 +1,11 @@
+{
+  "draft_id": "draft_2026",
+  "status": "drafting",
+  "season": "2026",
+  "settings": {"rounds": 5, "teams": 14},
+  "draft_order": {
+    "u11": 1,
+    "u3": 2,
+    "u4": 3
+  }
+}
