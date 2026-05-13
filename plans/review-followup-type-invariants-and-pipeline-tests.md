@@ -261,8 +261,9 @@ follow the existing fixture patterns in `tests/unit/test_*_resolver.py` and
   `complete`, `pick_context` stays `None`, which is consistent.
 - **`PerAssetValue.sources` typing** — `ValueSourceBreakdown` is already
   defined in `models/values.py`. Verify it imports cleanly into `trade.py`
-  without creating a circular dependency (currently `trade.py` does not
-  import from `values.py`).
+  without creating a circular dependency (`trade.py` already imports
+  `SourceDisagreement` from `.values`, so adding `ValueSourceBreakdown` to
+  that same import line is safe).
 - **Smoke tests** that construct envelope responses via tool calls should
   continue passing because pipelines already produce valid shapes — the
   invariants formalize what's already true at the construction site.
