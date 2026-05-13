@@ -494,7 +494,7 @@ def whats_on_the_clock_output(
     pick_context = None
     if status == "drafting":
         next_pick_no = len(picks) + 1
-        teams = int(draft.get("settings", {}).get("teams", 14))
+        teams = max(int(draft.get("settings", {}).get("teams", 14) or 14), 1)
         round_number = (next_pick_no - 1) // teams + 1
         slot = (next_pick_no - 1) % teams + 1
         owner = _owner_for_draft_slot(draft, snapshot, slot)
@@ -1094,8 +1094,8 @@ def _recent_pick(
     owners = _user_by_owner(snapshot)
     roster_id = int(raw.get("roster_id") or 0)
     return RecentPick(
-        round=int(raw.get("round") or 0),
-        slot=int(raw.get("pick_no") or 0),
+        round=max(int(raw.get("round") or 1), 1),
+        slot=max(int(raw.get("pick_no") or 1), 1),
         sleeper_id=str(raw.get("player_id")),
         name=str(player.get("full_name") or raw.get("player_id")),
         position=str(player.get("position") or ""),

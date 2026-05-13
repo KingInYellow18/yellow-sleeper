@@ -20,8 +20,8 @@ class PickContext(BaseModel):
 
 
 class RecentPick(BaseModel):
-    round: int
-    slot: int
+    round: int = Field(..., ge=1)
+    slot: int = Field(..., ge=1)
     sleeper_id: str = Field(..., max_length=20)
     name: str = Field(..., max_length=100)
     position: str = Field(..., max_length=10)
