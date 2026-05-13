@@ -187,6 +187,12 @@ def test_per_asset_value_skips_multi_source_coherence_check() -> None:
     )
 
 
+def test_per_asset_value_rejects_none_value_with_sole_enabled_source() -> None:
+    # value=None is inconsistent when exactly one enabled source carries a value.
+    with pytest.raises(ValidationError, match="disagrees|sole enabled"):
+        PerAssetValue(asset="x", side="send", value=None, sources=[_value_source(99.0)])
+
+
 def test_per_asset_value_ignores_disabled_sources() -> None:
     # A disabled source's value is not in the disagreement check.
     PerAssetValue(

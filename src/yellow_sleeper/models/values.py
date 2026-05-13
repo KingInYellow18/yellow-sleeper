@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .envelope import ResponseEnvelope
 from .shared import Candidate
 
 
 class ValueSourceBreakdown(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     source: Literal["fantasycalc", "xlsx", "config_pick_table"]
     value: float | None = None
     timestamp: datetime
@@ -17,6 +19,8 @@ class ValueSourceBreakdown(BaseModel):
 
 
 class SourceDisagreement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     max_delta_pct: float
     sources: list[ValueSourceBreakdown] = Field(..., max_length=10)
 

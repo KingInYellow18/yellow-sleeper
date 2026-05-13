@@ -905,6 +905,7 @@ def _trade_value_math(
             delta=round(delta, 2),
             delta_pct=round(delta / send_total * 100, 2) if send_total else None,
             per_asset=per_asset,
+            # TODO: Future cross-source disagreement design is currently out of scope.
             source_disagreement=None,
         ),
         missing_assets,
