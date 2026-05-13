@@ -1,17 +1,30 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
 from yellow_sleeper.models import (
     ListMyPicksInput,
     ListTradedPicksInput,
+    PerAssetValue,
     PickContext,
     PickInventorySummary,
     PositionDepthChange,
     TradedPick,
+    ValueSourceBreakdown,
     WhatsOnTheClockOutput,
 )
+
+
+def _value_source(value: float | None, *, enabled: bool = True) -> ValueSourceBreakdown:
+    return ValueSourceBreakdown(
+        source="fantasycalc",
+        value=value,
+        timestamp=datetime.now(UTC),
+        enabled=enabled,
+    )
 
 
 def test_position_depth_change_rejects_inconsistent_delta() -> None:
@@ -137,4 +150,54 @@ def test_traded_pick_rejects_malformed_pick_token() -> None:
         current_owner_roster_id=2,
         original_owner_name="Owner A",
         current_owner_name="Owner B",
+    )
+
+
+def test_per_asset_value_rejects_value_without_asset() -> None:
+    with pytest.raises(ValidationError, match="asset"):
+        PerAssetValue(asset=None, side="send", value=42.0)
+    PerAssetValue(asset=None, side="send", value=None)
+    PerAssetValue(asset="player_1234", side="send", value=42.0)
+
+
+def test_per_asset_value_rejects_disagreement_with_sole_enabled_source() -> None:
+    PerAssetValue(
+        asset="player_1234",
+        side="send",
+        value=42.0,
+        sources=[_value_source(42.0)],
+    )
+    with pytest.raises(ValidationError, match="disagrees"):
+        PerAssetValue(
+            asset="player_1234",
+            side="send",
+            value=42.0,
+            sources=[_value_source(99.0)],
+        )
+
+
+def test_per_asset_value_skips_multi_source_coherence_check() -> None:
+    # When 2+ sources are enabled-with-value, the single-source invariant
+    # does not fire (scope intentionally narrow per plan 2.2).
+    PerAssetValue(
+        asset="player_1234",
+        side="send",
+        value=42.0,
+        sources=[_value_source(40.0), _value_source(44.0)],
+    )
+
+
+def test_per_asset_value_rejects_none_value_with_sole_enabled_source() -> None:
+    # value=None is inconsistent when exactly one enabled source carries a value.
+    with pytest.raises(ValidationError, match="disagrees|sole enabled"):
+        PerAssetValue(asset="x", side="send", value=None, sources=[_value_source(99.0)])
+
+
+def test_per_asset_value_ignores_disabled_sources() -> None:
+    # A disabled source's value is not in the disagreement check.
+    PerAssetValue(
+        asset="player_1234",
+        side="send",
+        value=42.0,
+        sources=[_value_source(42.0), _value_source(99.0, enabled=False)],
     )

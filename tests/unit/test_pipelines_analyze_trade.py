@@ -2,37 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
-from tests.conftest import load_fixture
 from yellow_sleeper.analyze.pipelines import analyze_trade_pipeline
 from yellow_sleeper.config import DynamicPolicy
 from yellow_sleeper.models import DataStatus, FlagType, PolicyStatus, ResolutionStatus
 
 
-@pytest.fixture
-def snapshot() -> dict[str, Any]:
-    return {
-        "league": load_fixture("sleeper/league.json"),
-        "rosters": load_fixture("sleeper/rosters_14team.json"),
-        "users": load_fixture("sleeper/users_14team.json"),
-        "traded_picks": load_fixture("sleeper/traded_picks.json"),
-        "drafts": load_fixture("sleeper/drafts.json"),
-    }
-
-
-@pytest.fixture
-def players() -> dict[str, Any]:
-    return load_fixture("sleeper/players_nfl.json")
-
-
-@pytest.fixture
-def values() -> list[dict[str, Any]]:
-    return load_fixture("fantasycalc/values_current.json")
-
-
 def test_unresolved_asset_returns_needs_clarification(
-    snapshot: dict[str, Any],
+    sleeper_snapshot: dict[str, Any],
     players: dict[str, Any],
     values: list[dict[str, Any]],
 ) -> None:
@@ -43,7 +19,7 @@ def test_unresolved_asset_returns_needs_clarification(
         my_send=["Definitely Not A Real Player"],
         my_receive=["Bijan Robinson"],
         policy=DynamicPolicy(),
-        snapshot=snapshot,
+        snapshot=sleeper_snapshot,
         players=players,
         values=values,
         sleeper_username="brad",
@@ -58,7 +34,7 @@ def test_unresolved_asset_returns_needs_clarification(
 
 
 def test_all_assets_missing_values_returns_unavailable(
-    snapshot: dict[str, Any],
+    sleeper_snapshot: dict[str, Any],
     players: dict[str, Any],
 ) -> None:
     # Use real player names so resolution succeeds, but empty values feed so
@@ -67,7 +43,7 @@ def test_all_assets_missing_values_returns_unavailable(
         my_send=["Drake London"],
         my_receive=["Bijan Robinson"],
         policy=DynamicPolicy(),
-        snapshot=snapshot,
+        snapshot=sleeper_snapshot,
         players=players,
         values=[],
         sleeper_username="brad",
@@ -81,7 +57,7 @@ def test_all_assets_missing_values_returns_unavailable(
 
 
 def test_stale_values_cache_emits_stale_flag_and_partial(
-    snapshot: dict[str, Any],
+    sleeper_snapshot: dict[str, Any],
     players: dict[str, Any],
     values: list[dict[str, Any]],
 ) -> None:
@@ -89,7 +65,7 @@ def test_stale_values_cache_emits_stale_flag_and_partial(
         my_send=["Drake London"],
         my_receive=["Bijan Robinson"],
         policy=DynamicPolicy(),
-        snapshot=snapshot,
+        snapshot=sleeper_snapshot,
         players=players,
         values=values,
         sleeper_username="brad",

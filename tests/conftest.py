@@ -13,7 +13,7 @@ def load_fixture(relative_path: str) -> Any:
     return json.loads((FIXTURE_ROOT / relative_path).read_text(encoding="utf-8"))
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sleeper_snapshot() -> dict[str, Any]:
     return {
         "league": load_fixture("sleeper/league.json"),
@@ -21,4 +21,23 @@ def sleeper_snapshot() -> dict[str, Any]:
         "users": load_fixture("sleeper/users_14team.json"),
         "traded_picks": load_fixture("sleeper/traded_picks.json"),
         "drafts": load_fixture("sleeper/drafts.json"),
+    }
+
+
+@pytest.fixture(scope="session")
+def players() -> dict[str, Any]:
+    return load_fixture("sleeper/players_nfl.json")
+
+
+@pytest.fixture(scope="session")
+def values() -> list[dict[str, Any]]:
+    return load_fixture("fantasycalc/values_current.json")
+
+
+def fresh_cache_statuses() -> dict[str, str]:
+    return {
+        "sleeper_players_nfl": "fresh",
+        "fantasycalc_values": "fresh",
+        "league_snapshot": "fresh",
+        "draft_state": "fresh",
     }

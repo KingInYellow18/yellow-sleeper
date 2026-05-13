@@ -60,7 +60,6 @@ from .value import (
     parse_value_records,
     pick_value_source,
     player_value_source,
-    source_disagreement,
     value_source,
     values_by_sleeper_id,
 )
@@ -490,7 +489,8 @@ def whats_on_the_clock_output(
     draft = draft_state.get("draft", {})
     picks = draft_state.get("picks", [])
     status = _draft_status(draft.get("status", "complete"))
-    recent = [_recent_pick(raw, players, snapshot) for raw in picks[-10:]]
+    owners = _user_by_owner(snapshot)
+    recent = [_recent_pick(raw, players, owners) for raw in picks[-10:]]
     pick_context = None
     if status == "drafting":
         next_pick_no = len(picks) + 1
@@ -878,7 +878,6 @@ def _trade_value_math(
     send_total = 0.0
     receive_total = 0.0
     missing_assets = []
-    disagreements = []
     for side, resolutions in [("send", send), ("receive", receive)]:
         for resolution in resolutions:
             value_source = _asset_value_source(resolution, inventory, value_index)
@@ -898,9 +897,6 @@ def _trade_value_math(
                 send_total += value
             else:
                 receive_total += value
-            disagreement = source_disagreement([value_source])
-            if disagreement is not None:
-                disagreements.append(disagreement)
     delta = receive_total - send_total
     return (
         ValueMath(
@@ -909,7 +905,8 @@ def _trade_value_math(
             delta=round(delta, 2),
             delta_pct=round(delta / send_total * 100, 2) if send_total else None,
             per_asset=per_asset,
-            source_disagreement=disagreements[0] if disagreements else None,
+            # TODO: Future cross-source disagreement design is currently out of scope.
+            source_disagreement=None,
         ),
         missing_assets,
     )
@@ -1046,7 +1043,11 @@ def _adjust_pick_count(
     if pick is None:
         return
     key = f"{pick.season}_R{pick.round}"
-    counts[key] = counts.get(key, 0) + delta
+    # Clamp to 0: "send a pick you don't own" silently maps to "no change"
+    # rather than surfacing a nonsensical negative post-trade count to callers.
+    # The PickInventorySummary._validate_delta invariant still holds because
+    # delta is computed from the (clamped) final post/pre at construction.
+    counts[key] = max(0, counts.get(key, 0) + delta)
 
 
 def _user_by_owner(snapshot: dict[str, Any]) -> dict[int, dict[str, str]]:
@@ -1088,10 +1089,9 @@ def _draft_status(status: str) -> str:
 def _recent_pick(
     raw: dict[str, Any],
     players: Mapping[str, Any],
-    snapshot: dict[str, Any],
+    owners: dict[int, dict[str, str]],
 ) -> RecentPick:
     player = _player_record(str(raw.get("player_id")), players) or {}
-    owners = _user_by_owner(snapshot)
     roster_id = int(raw.get("roster_id") or 0)
     return RecentPick(
         round=max(int(raw.get("round") or 1), 1),
