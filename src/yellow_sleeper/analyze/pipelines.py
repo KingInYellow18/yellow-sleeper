@@ -44,6 +44,7 @@ from ..models import (
     SourceNote,
     TeamRollup,
     ValueMath,
+    ValueSourceBreakdown,
     WhatsOnTheClockOutput,
 )
 from ..resolve import resolve_pick_description, resolve_player, resolve_roster
@@ -918,7 +919,7 @@ def _asset_value_source(
     resolution: AssetResolution,
     inventory: PickInventory,
     value_index: dict[str, FCRecord],
-):
+) -> ValueSourceBreakdown:
     if resolution.asset_type == "player" and resolution.resolved_id:
         return player_value_source(resolution.resolved_id, value_index)
     pick = next(

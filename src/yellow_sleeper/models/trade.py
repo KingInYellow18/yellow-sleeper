@@ -57,6 +57,19 @@ class PickInventorySummary(BaseModel):
     post: dict[str, int]
     delta: dict[str, int]
 
+    @model_validator(mode="after")
+    def _validate_delta(self) -> PickInventorySummary:
+        for key in set(self.pre) | set(self.post) | set(self.delta):
+            expected = self.post.get(key, 0) - self.pre.get(key, 0)
+            actual = self.delta.get(key, 0)
+            if actual != expected:
+                raise ValueError(
+                    f"delta[{key!r}]={actual} inconsistent with "
+                    f"post-pre={expected} "
+                    f"(pre={self.pre.get(key, 0)}, post={self.post.get(key, 0)})"
+                )
+        return self
+
 
 class RosterContext(BaseModel):
     position_depth_change: list[PositionDepthChange]

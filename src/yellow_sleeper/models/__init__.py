@@ -8,6 +8,7 @@ from .picks import (
     ListTradedPicksInput,
     ListTradedPicksOutput,
     Pick,
+    SeasonYear,
     TradedPick,
 )
 from .refresh import CacheRefreshResult, RefreshCacheInput, RefreshCacheOutput
@@ -96,6 +97,7 @@ __all__ = [
     "RosterContext",
     "RosterMatch",
     "RosterPlayer",
+    "SeasonYear",
     "SourceDisagreement",
     "SourceNote",
     "TeamRollup",
