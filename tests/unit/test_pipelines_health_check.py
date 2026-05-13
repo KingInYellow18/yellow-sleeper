@@ -1,20 +1,12 @@
 from __future__ import annotations
 
+from tests.conftest import fresh_cache_statuses
 from yellow_sleeper.analyze.pipelines import health_check_output
 from yellow_sleeper.models import DataStatus, FlagType
 
 
-def _all_fresh() -> dict[str, str]:
-    return {
-        "sleeper_players_nfl": "fresh",
-        "fantasycalc_values": "fresh",
-        "league_snapshot": "fresh",
-        "draft_state": "fresh",
-    }
-
-
 def test_one_stale_key_returns_partial_with_stale_flag() -> None:
-    cache_status = {**_all_fresh(), "fantasycalc_values": "stale"}
+    cache_status = {**fresh_cache_statuses(), "fantasycalc_values": "stale"}
 
     result = health_check_output(
         cache_status=cache_status,
@@ -30,7 +22,7 @@ def test_one_stale_key_returns_partial_with_stale_flag() -> None:
 
 
 def test_all_stale_keys_return_unavailable() -> None:
-    cache_status = dict.fromkeys(_all_fresh(), "stale")
+    cache_status = dict.fromkeys(fresh_cache_statuses(), "stale")
 
     result = health_check_output(
         cache_status=cache_status,
