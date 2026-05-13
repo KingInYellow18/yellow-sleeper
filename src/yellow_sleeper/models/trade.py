@@ -17,6 +17,31 @@ class PerAssetValue(BaseModel):
     value: float | None = None
     sources: list[ValueSourceBreakdown] = Field(default_factory=list, max_length=10)
 
+    @model_validator(mode="after")
+    def _validate_value_requires_asset(self) -> PerAssetValue:
+        if self.value is not None and self.asset is None:
+            raise ValueError("asset must not be None when value is set")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_value_matches_single_source(self) -> PerAssetValue:
+        # When exactly one enabled source carries a value, PerAssetValue.value
+        # must reflect that source (within float tolerance). Pipelines today
+        # always populate sources with a single ValueSourceBreakdown per asset;
+        # this codifies that contract. Multi-source aggregation is intentionally
+        # out of scope — when sources != 1 enabled-with-value, skip the check.
+        if self.value is None:
+            return self
+        enabled = [
+            s.value for s in self.sources if s.enabled and s.value is not None
+        ]
+        if len(enabled) == 1 and abs(enabled[0] - self.value) >= 0.01:
+            raise ValueError(
+                f"value={self.value} disagrees with sole enabled source "
+                f"value={enabled[0]}"
+            )
+        return self
+
 
 class ValueMath(BaseModel):
     send_total: float | None = None

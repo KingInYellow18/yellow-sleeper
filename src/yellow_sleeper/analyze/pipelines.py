@@ -1042,7 +1042,11 @@ def _adjust_pick_count(
     if pick is None:
         return
     key = f"{pick.season}_R{pick.round}"
-    counts[key] = counts.get(key, 0) + delta
+    # Clamp to 0: "send a pick you don't own" silently maps to "no change"
+    # rather than surfacing a nonsensical negative post-trade count to callers.
+    # The PickInventorySummary._validate_delta invariant still holds because
+    # delta is computed from the (clamped) final post/pre at construction.
+    counts[key] = max(0, counts.get(key, 0) + delta)
 
 
 def _user_by_owner(snapshot: dict[str, Any]) -> dict[int, dict[str, str]]:
