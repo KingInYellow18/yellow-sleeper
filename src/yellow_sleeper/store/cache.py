@@ -28,7 +28,7 @@ class CacheReadResult:
     error: Exception | None = None
 
 
-async def atomic_write_json(path: Path, data: Any, *, gzipped: bool = False) -> None:
+def atomic_write_json(path: Path, data: Any, *, gzipped: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_path = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
@@ -74,7 +74,7 @@ class Cache:
                 return CacheReadResult(self._read(path, gzipped=use_gzip), "cached")
             try:
                 data = await fetcher()
-                await atomic_write_json(path, data, gzipped=use_gzip)
+                await asyncio.to_thread(atomic_write_json, path, data, gzipped=use_gzip)
                 return CacheReadResult(data, "fresh")
             except Exception as exc:
                 if path.exists():
@@ -101,7 +101,7 @@ class Cache:
         spec = CACHE_SPECS[key]
         use_gzip = spec.gzipped if gzipped is None else gzipped
         path = cache_path(self.base_dir, key, gzipped=use_gzip)
-        await atomic_write_json(path, data, gzipped=use_gzip)
+        await asyncio.to_thread(atomic_write_json, path, data, gzipped=use_gzip)
 
     def read(self, key: CacheKey, *, gzipped: bool | None = None) -> Any:
         spec = CACHE_SPECS[key]

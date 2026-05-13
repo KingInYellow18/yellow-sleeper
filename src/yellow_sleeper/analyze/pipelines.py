@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
@@ -84,9 +85,7 @@ def health_check_output(
     errors = errors or []
     degraded_states = {CACHE_STATUS_STALE, "missing"}
     all_unavailable = all(status in degraded_states for status in cache_status.values())
-    any_partial = (
-        any(status in degraded_states for status in cache_status.values()) or errors
-    )
+    any_partial = any(status in degraded_states for status in cache_status.values()) or errors
     if all_unavailable:
         data_status = DataStatus.UNAVAILABLE
     elif any_partial:
@@ -132,6 +131,29 @@ def get_my_roster_output(
     values_cache_error: str | None = None,
 ) -> GetMyRosterOutput:
     roster_id = find_roster_id_for_username(snapshot, sleeper_username)
+    if roster_id is None:
+        return GetMyRosterOutput(
+            policy_status=PolicyStatus.OK,
+            resolution_status=ResolutionStatus.NEEDS_CLARIFICATION,
+            data_status=DataStatus.UNAVAILABLE,
+            policy_flags=[
+                PolicyFlag(
+                    type=FlagType.AMBIGUOUS_RESOLUTION,
+                    asset=sleeper_username,
+                    rule_source="computed",
+                    severity=FlagSeverity.WARNING,
+                    reason=(
+                        f"Username '{sleeper_username}' did not resolve to a roster "
+                        "in the league snapshot."
+                    ),
+                )
+            ],
+            source_notes=[_source_note("grouped_roster", "sleeper")],
+            config_sources=config_sources,
+            grouped_roster=[],
+            positional_depth=_positional_depth([]),
+            age_stats=_age_stats([], []),
+        )
     roster = _roster_by_id(snapshot, roster_id)
     value_index = values_by_sleeper_id(values)
     roster_players = [
@@ -338,7 +360,7 @@ def analyze_trade_pipeline(
     asset_resolutions = send_resolutions + receive_resolutions
     blocking_rules = _blocking_rules(my_send, send_resolutions, players, policy)
     resolution_status = _resolution_status(asset_resolutions)
-    flags = _trade_policy_flags(asset_resolutions, policy)
+    flags = _trade_policy_flags(asset_resolutions, policy, players, current_season(snapshot))
 
     if blocking_rules:
         return AnalyzeTradeOutput(
@@ -438,7 +460,8 @@ def league_power_map_output(
                 missing.append(player.name)
                 missing_any = True
             else:
-                rollups[player.position] += player.value
+                if player.position in rollups:
+                    rollups[player.position] += player.value
         roster_total = round(sum(rollups.values()), 2)
         teams.append(
             TeamRollup(
@@ -448,9 +471,7 @@ def league_power_map_output(
                 positional_rollups=rollups,  # type: ignore[arg-type]
                 roster_total=roster_total,
                 pick_total=(
-                    _pick_total(snapshot, int(roster["roster_id"]))
-                    if include_pick_value
-                    else None
+                    _pick_total(snapshot, int(roster["roster_id"])) if include_pick_value else None
                 ),
                 roster_age=_age_stats(roster_players, roster_players),
                 missing_flags=missing[:10],
@@ -619,9 +640,7 @@ def refresh_cache_output(
 
 
 def _health_msg(cache_status: dict[str, str]) -> str:
-    if all(
-        status in {CACHE_STATUS_FRESH, CACHE_STATUS_CACHED} for status in cache_status.values()
-    ):
+    if all(status in {CACHE_STATUS_FRESH, CACHE_STATUS_CACHED} for status in cache_status.values()):
         return "all caches within TTL"
     return "one or more caches are stale or missing"
 
@@ -708,7 +727,8 @@ def _roster_player(
 def _positional_depth(players: list[RosterPlayer]) -> list[PositionalDepth]:
     counts = {position: 0 for position in POSITIONS}
     for player in players:
-        counts[player.position] += 1
+        if player.position in counts:
+            counts[player.position] += 1
     starter_defaults = {"QB": 2, "RB": 2, "WR": 3, "TE": 1}
     return [
         PositionalDepth(
@@ -777,8 +797,7 @@ def _resolution_status(resolutions: list[AssetResolution]) -> ResolutionStatus:
     return (
         ResolutionStatus.NEEDS_CLARIFICATION
         if any(
-            resolution.manual_review or resolution.resolved_id is None
-            for resolution in resolutions
+            resolution.manual_review or resolution.resolved_id is None for resolution in resolutions
         )
         else ResolutionStatus.OK
     )
@@ -819,36 +838,55 @@ def _resolved_player_name(resolved_id: str | None, players: Mapping[str, Any]) -
     return str(raw.get("full_name") or raw.get("search_full_name") or resolved_id)
 
 
+_PICK_TOKEN_RE = re.compile(r"^pick_(\d+)_r(\d+)_orig\d+$")
+
+
 def _trade_policy_flags(
     resolutions: list[AssetResolution],
     policy: DynamicPolicy,
+    players: Mapping[str, Any],
+    season: int,
 ) -> list[PolicyFlag]:
     flags: list[PolicyFlag] = []
     protected_players = {name.lower() for name in policy.protected_players}
     for resolution in resolutions:
-        if resolution.asset_type == "player" and resolution.input.lower() in protected_players:
-            flags.append(
-                PolicyFlag(
-                    type=FlagType.PROTECTED_PLAYER,
-                    asset=resolution.input,
-                    rule_source=".yellow-sleeper.yaml",
-                    severity=FlagSeverity.INFO,
-                    reason=f"{resolution.input} is on protected_players list.",
-                )
-            )
-        if resolution.asset_type == "pick" and resolution.resolved_id:
-            for pattern in policy.protected_pick_patterns:
-                parsed = parse_pick_description(pattern, current_season=2026, draft_active=False)
-                if parsed.parsed and f"r{parsed.round}" in resolution.resolved_id:
-                    flags.append(
-                        PolicyFlag(
-                            type=FlagType.PROTECTED_PICK_PATTERN,
-                            asset=resolution.resolved_id,
-                            rule_source=".yellow-sleeper.yaml",
-                            severity=FlagSeverity.WARNING,
-                            reason=f"{resolution.resolved_id} matches protected_pick_patterns.",
-                        )
+        if resolution.asset_type == "player":
+            canonical = _resolved_player_name(resolution.resolved_id, players)
+            match_name = (canonical or resolution.resolved_id or "").lower()
+            if match_name and match_name in protected_players:
+                display = canonical or resolution.resolved_id or resolution.input
+                flags.append(
+                    PolicyFlag(
+                        type=FlagType.PROTECTED_PLAYER,
+                        asset=display,
+                        rule_source=".yellow-sleeper.yaml",
+                        severity=FlagSeverity.INFO,
+                        reason=f"{display} is on protected_players list.",
                     )
+                )
+        if resolution.asset_type == "pick" and resolution.resolved_id:
+            token_match = _PICK_TOKEN_RE.match(resolution.resolved_id)
+            if token_match:
+                token_season = int(token_match.group(1))
+                token_round = int(token_match.group(2))
+                for pattern in policy.protected_pick_patterns:
+                    parsed = parse_pick_description(
+                        pattern, current_season=season, draft_active=False
+                    )
+                    if (
+                        parsed.parsed
+                        and parsed.season == token_season
+                        and parsed.round == token_round
+                    ):
+                        flags.append(
+                            PolicyFlag(
+                                type=FlagType.PROTECTED_PICK_PATTERN,
+                                asset=resolution.resolved_id,
+                                rule_source=".yellow-sleeper.yaml",
+                                severity=FlagSeverity.WARNING,
+                                reason=f"{resolution.resolved_id} matches protected_pick_patterns.",
+                            )
+                        )
     return flags[:25]
 
 
@@ -1002,7 +1040,8 @@ def _roster_context(
 def _position_counts(players: list[RosterPlayer]) -> dict[str, int]:
     counts = {position: 0 for position in POSITIONS}
     for player in players:
-        counts[player.position] += 1
+        if player.position in counts:
+            counts[player.position] += 1
     return counts
 
 

@@ -30,11 +30,11 @@ async def test_sleeper_client_fetches_league_snapshot() -> None:
     async with build_shared_client() as http:
         client = SleeperClient(http)
 
-        snapshot = await client.get_league_snapshot(league_id)
+        result = await client.get_league_snapshot(league_id)
 
-    assert snapshot["league"]["league_id"] == league_id
-    assert len(snapshot["rosters"]) == 14
-    assert len(snapshot["users"]) == 14
+    assert result.data["league"]["league_id"] == league_id
+    assert len(result.data["rosters"]) == 14
+    assert len(result.data["users"]) == 14
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 
 from ..models import LiveProbeResult
-from ..store import Cache
+from ..store import Cache, CacheReadResult
 
 
 class SleeperClient:
@@ -54,7 +54,7 @@ class SleeperClient:
         cache: Cache | None = None,
         *,
         force: bool = False,
-    ) -> dict[str, Any]:
+    ) -> CacheReadResult:
         async def fetch() -> dict[str, Any]:
             async with asyncio.TaskGroup() as tg:
                 league_task = tg.create_task(self.get_league(league_id))
@@ -71,8 +71,8 @@ class SleeperClient:
             }
 
         if cache is None:
-            return await fetch()
-        return (await cache.read_or_fetch("league_snapshot", fetch, force=force)).data
+            return CacheReadResult(await fetch(), "fresh")
+        return await cache.read_or_fetch("league_snapshot", fetch, force=force)
 
     async def get_draft_state(
         self,
@@ -80,7 +80,7 @@ class SleeperClient:
         cache: Cache | None = None,
         *,
         force: bool = False,
-    ) -> dict[str, Any]:
+    ) -> CacheReadResult:
         async def fetch() -> dict[str, Any]:
             async with asyncio.TaskGroup() as tg:
                 draft_task = tg.create_task(self.get_draft(draft_id))
@@ -88,7 +88,7 @@ class SleeperClient:
             return {"draft": draft_task.result(), "picks": picks_task.result()}
 
         if cache is None:
-            return await fetch()
+            return CacheReadResult(await fetch(), "fresh")
 
         # Drop TTL from 1h to 30s once cached state shows the draft is active so
         # tools polling whats_on_the_clock see new picks within the round.
@@ -100,11 +100,9 @@ class SleeperClient:
         if isinstance(cached, dict):
             ttl_seconds = draft_state_ttl(cached.get("draft", {}))
 
-        return (
-            await cache.read_or_fetch(
-                "draft_state", fetch, ttl_seconds=ttl_seconds, force=force
-            )
-        ).data
+        return await cache.read_or_fetch(
+            "draft_state", fetch, ttl_seconds=ttl_seconds, force=force
+        )
 
     async def probe(self) -> LiveProbeResult:
         start = time.monotonic()

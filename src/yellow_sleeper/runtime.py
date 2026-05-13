@@ -38,10 +38,9 @@ class Runtime:
         return await self.fantasycalc.get_current_values_cached(self.cache, force=force)
 
     async def snapshot(self, *, force: bool = False) -> tuple[dict[str, Any], str]:
-        async def fetch() -> dict[str, Any]:
-            return await self.sleeper.get_league_snapshot(self.config.static.sleeper_league_id)
-
-        result = await self.cache.read_or_fetch("league_snapshot", fetch, force=force)
+        result = await self.sleeper.get_league_snapshot(
+            self.config.static.sleeper_league_id, self.cache, force=force
+        )
         return result.data, result.status
 
     async def draft_state(
@@ -54,7 +53,7 @@ class Runtime:
             snapshot, _ = await self.snapshot()
             draft_id = _current_draft_id(snapshot)
         result = await self.sleeper.get_draft_state(draft_id, self.cache, force=force)
-        return result, self.cache.status("draft_state")
+        return result.data, result.status
 
     async def refresh_all(
         self,

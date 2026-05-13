@@ -13,7 +13,7 @@ from yellow_sleeper.store import Cache, atomic_write_json
 async def test_atomic_write_json_supports_gzip(tmp_path: Path) -> None:
     path = tmp_path / "sleeper_players_nfl.json.gz"
 
-    await atomic_write_json(path, {"players": ["9745"]}, gzipped=True)
+    atomic_write_json(path, {"players": ["9745"]}, gzipped=True)
 
     cache = Cache(tmp_path)
     assert cache.read("sleeper_players_nfl") == {"players": ["9745"]}

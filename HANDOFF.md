@@ -23,7 +23,7 @@
 | `src/yellow_sleeper/models/shared.py` | Source notes, policy flags, blocking rules, candidates, and asset resolution models. |
 | `src/yellow_sleeper/models/trade.py` | Trade input/output, value math, roster context, and blocked-trade validator. |
 | `src/yellow_sleeper/models/roster.py` | Roster, find-roster, and league power map models. |
-| `src/yellow_sleeper/models/picks.py` | Traded-pick and Brad pick inventory models. |
+| `src/yellow_sleeper/models/picks.py` | Traded-pick and pick inventory models. |
 | `src/yellow_sleeper/models/values.py` | FantasyCalc value lookup models. |
 | `src/yellow_sleeper/models/bpa.py` | Best-player-available input/output models. |
 | `src/yellow_sleeper/models/draft.py` | Draft state and on-the-clock models. |
@@ -96,7 +96,7 @@ PATH="$PWD/.venv/bin:$PATH" ruff check src/ tests/
 PATH="$PWD/.venv/bin:$PATH" python -m pytest tests/ -v
 ```
 
-The final run in this workspace passed with 45 tests: 35 unit, 4 integration, and 6 smoke.
+The final run in this workspace passed with 50 tests: 39 unit, 5 integration, and 6 smoke.
 
 ## Known Gaps
 

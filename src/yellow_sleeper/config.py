@@ -59,12 +59,14 @@ class Config:
         *,
         policy_sources: list[str] | None = None,
         static_sources: list[str] | None = None,
+        env_policy: DynamicPolicy | None = None,
     ) -> None:
         self.static = static
         self._policy = policy
         self._yaml_path = yaml_path
         self._policy_sources = policy_sources or ["built-in_default"]
         self.static_sources = static_sources or ["built-in_default"]
+        self._env_policy = env_policy
         self._policy_mtime = yaml_path.stat().st_mtime if yaml_path.exists() else 0.0
 
     def policy(self, override: PolicyOverride | None = None) -> tuple[DynamicPolicy, list[str]]:
@@ -73,7 +75,13 @@ class Config:
             mtime = self._yaml_path.stat().st_mtime
             if mtime != self._policy_mtime:
                 try:
-                    yaml_policy, yaml_sources = _load_yaml_policy(self._yaml_path)
+                    yaml_policy, yaml_sources = _load_yaml_policy(
+                        self._yaml_path, env_policy=self._env_policy
+                    )
+                    if self._env_policy is not None and self._env_policy.model_dump(
+                        exclude_defaults=True
+                    ):
+                        yaml_sources = yaml_sources + ["env"]
                     self._policy = yaml_policy
                     self._policy_sources = yaml_sources
                     self._policy_mtime = mtime
@@ -122,6 +130,7 @@ def load_config(
         yaml_path=yaml_path,
         policy_sources=policy_sources,
         static_sources=static_sources,
+        env_policy=env_policy,
     )
 
 

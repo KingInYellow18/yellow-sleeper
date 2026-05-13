@@ -14,8 +14,10 @@ async def lifespan(server: FastMCP):
     try:
         yield {"runtime": runtime}
     finally:
-        await runtime.aclose()
-        set_runtime(None)
+        try:
+            await runtime.aclose()
+        finally:
+            set_runtime(None)
 
 
 mcp = FastMCP("yellow-sleeper", lifespan=lifespan)
