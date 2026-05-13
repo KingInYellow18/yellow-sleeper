@@ -84,7 +84,17 @@ class Cache:
                         exc,
                         exc_info=True,
                     )
-                    return CacheReadResult(self._read(path, gzipped=use_gzip), "stale", exc)
+                    try:
+                        stale_data = self._read(path, gzipped=use_gzip)
+                    except (OSError, ValueError) as read_exc:
+                        logger.warning(
+                            "stale cache read failed for %r after fetch failure: %s",
+                            key,
+                            read_exc,
+                            exc_info=True,
+                        )
+                        raise exc from read_exc
+                    return CacheReadResult(stale_data, "stale", exc)
                 raise
 
     async def write(self, key: CacheKey, data: Any, *, gzipped: bool | None = None) -> None:
