@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import math
 import time
 from datetime import UTC, datetime
 
 import httpx
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from ..models import LiveProbeResult
 from ..store import Cache
@@ -34,6 +35,13 @@ class FCRecord(BaseModel):
     overallRank: int
     redraftValue: float | None = None
     trend30Day: float | None = None
+
+    @field_validator("value", "redraftValue", "trend30Day")
+    @classmethod
+    def _reject_non_finite(cls, v: float | None) -> float | None:
+        if v is not None and not math.isfinite(v):
+            raise ValueError("non-finite numeric value (NaN/Inf) is not permitted")
+        return v
 
 
 class FantasyCalcClient:
