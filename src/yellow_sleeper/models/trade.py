@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .envelope import DataStatus, PolicyStatus, ResponseEnvelope
 from .shared import AssetResolution
-from .values import SourceDisagreement
+from .values import SourceDisagreement, ValueSourceBreakdown
+
+
+class PerAssetValue(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    asset: str | None = Field(None, max_length=200)
+    side: Literal["send", "receive"]
+    value: float | None = None
+    sources: list[ValueSourceBreakdown] = Field(default_factory=list, max_length=10)
 
 
 class ValueMath(BaseModel):
@@ -14,7 +23,7 @@ class ValueMath(BaseModel):
     receive_total: float | None = None
     delta: float | None = None
     delta_pct: float | None = None
-    per_asset: list[dict[str, Any]] = Field(default_factory=list)
+    per_asset: list[PerAssetValue] = Field(default_factory=list)
     source_disagreement: SourceDisagreement | None = None
 
 
@@ -23,6 +32,16 @@ class PositionDepthChange(BaseModel):
     pre: int = Field(..., ge=0)
     post: int = Field(..., ge=0)
     delta: int
+
+    @model_validator(mode="after")
+    def _validate_delta(self) -> PositionDepthChange:
+        expected = self.post - self.pre
+        if self.delta != expected:
+            raise ValueError(
+                f"delta={self.delta} inconsistent with post-pre={expected} "
+                f"(pre={self.pre}, post={self.post})"
+            )
+        return self
 
 
 class AgeStats(BaseModel):
@@ -37,6 +56,19 @@ class PickInventorySummary(BaseModel):
     pre: dict[str, int]
     post: dict[str, int]
     delta: dict[str, int]
+
+    @model_validator(mode="after")
+    def _validate_delta(self) -> PickInventorySummary:
+        for key in set(self.pre) | set(self.post) | set(self.delta):
+            expected = self.post.get(key, 0) - self.pre.get(key, 0)
+            actual = self.delta.get(key, 0)
+            if actual != expected:
+                raise ValueError(
+                    f"delta[{key!r}]={actual} inconsistent with "
+                    f"post-pre={expected} "
+                    f"(pre={self.pre.get(key, 0)}, post={self.post.get(key, 0)})"
+                )
+        return self
 
 
 class RosterContext(BaseModel):

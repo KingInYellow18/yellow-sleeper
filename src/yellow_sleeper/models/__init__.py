@@ -8,6 +8,7 @@ from .picks import (
     ListTradedPicksInput,
     ListTradedPicksOutput,
     Pick,
+    SeasonYear,
     TradedPick,
 )
 from .refresh import CacheRefreshResult, RefreshCacheInput, RefreshCacheOutput
@@ -36,6 +37,7 @@ from .trade import (
     AgeStats,
     AnalyzeTradeInput,
     AnalyzeTradeOutput,
+    PerAssetValue,
     PickInventorySummary,
     PolicyOverride,
     PositionDepthChange,
@@ -78,6 +80,7 @@ __all__ = [
     "ListTradedPicksInput",
     "ListTradedPicksOutput",
     "LiveProbeResult",
+    "PerAssetValue",
     "Pick",
     "PickContext",
     "PickInventorySummary",
@@ -94,6 +97,7 @@ __all__ = [
     "RosterContext",
     "RosterMatch",
     "RosterPlayer",
+    "SeasonYear",
     "SourceDisagreement",
     "SourceNote",
     "TeamRollup",

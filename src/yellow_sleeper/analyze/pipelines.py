@@ -29,6 +29,7 @@ from ..models import (
     LeaguePowerMapOutput,
     ListMyPicksOutput,
     ListTradedPicksOutput,
+    PerAssetValue,
     Pick,
     PickContext,
     PickInventorySummary,
@@ -43,6 +44,7 @@ from ..models import (
     SourceNote,
     TeamRollup,
     ValueMath,
+    ValueSourceBreakdown,
     WhatsOnTheClockOutput,
 )
 from ..resolve import resolve_pick_description, resolve_player, resolve_roster
@@ -492,7 +494,7 @@ def whats_on_the_clock_output(
     pick_context = None
     if status == "drafting":
         next_pick_no = len(picks) + 1
-        teams = int(draft.get("settings", {}).get("teams", 14))
+        teams = max(int(draft.get("settings", {}).get("teams", 14) or 14), 1)
         round_number = (next_pick_no - 1) // teams + 1
         slot = (next_pick_no - 1) % teams + 1
         owner = _owner_for_draft_slot(draft, snapshot, slot)
@@ -882,12 +884,12 @@ def _trade_value_math(
             value_source = _asset_value_source(resolution, inventory, value_index)
             value = value_source.value
             per_asset.append(
-                {
-                    "asset": resolution.resolved_id,
-                    "side": side,
-                    "value": value,
-                    "sources": [value_source],
-                }
+                PerAssetValue(
+                    asset=resolution.resolved_id,
+                    side=side,
+                    value=value,
+                    sources=[value_source],
+                )
             )
             if value is None:
                 missing_assets.append(resolution.input)
@@ -917,7 +919,7 @@ def _asset_value_source(
     resolution: AssetResolution,
     inventory: PickInventory,
     value_index: dict[str, FCRecord],
-):
+) -> ValueSourceBreakdown:
     if resolution.asset_type == "player" and resolution.resolved_id:
         return player_value_source(resolution.resolved_id, value_index)
     pick = next(
@@ -1092,8 +1094,8 @@ def _recent_pick(
     owners = _user_by_owner(snapshot)
     roster_id = int(raw.get("roster_id") or 0)
     return RecentPick(
-        round=int(raw.get("round") or 0),
-        slot=int(raw.get("pick_no") or 0),
+        round=max(int(raw.get("round") or 1), 1),
+        slot=max(int(raw.get("pick_no") or 1), 1),
         sleeper_id=str(raw.get("player_id")),
         name=str(player.get("full_name") or raw.get("player_id")),
         position=str(player.get("position") or ""),
